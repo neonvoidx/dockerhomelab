@@ -6,6 +6,7 @@ Compose configuration for a media stack, FreshRSS, and Kavita.
 
 - Public through Traefik: Seerr (`request`), Plex (`plex`), FreshRSS (`rss`), Kavita (`books`). Each application must require its own authentication.
 - Other routed services use the LAN allowlist: `127.0.0.1/32,192.168.86.0/24`.
+- Autoscan Adapter uses `init: true` so termination signals reach Flask without waiting for the shutdown timeout.
 - All remaining media applications share the `media` network. Gluetun, qBittorrent, and its forwarding helper have been removed; their data directories are preserved.
 - FreshRSS and Kavita have separate networks, each shared with Traefik.
 - Portainer has a separate management network. It retains full Docker management privileges.
