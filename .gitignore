@@ -1,0 +1,25 @@
+.env
+.env.*
+!.env.example
+secrets/
+.backup-update.lock
+*.bak-*
+
+# Application state uses paths relative to this Compose project.
+traefik/
+sabnzbd/
+tautulli/
+overseerr/
+cloudflare-ddns/
+prowlarr/
+plex-autoscan/
+notifiarr/
+gluetun/
+qbittorrent/
+plex-image-cleanup/
+posterizarr/
+freshrss/
+kavita/
+__pycache__/
+portainer/
+*.log

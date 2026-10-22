@@ -1,11 +1,49 @@
 version: "3"
 services:
+  # Only Traefik can reach this API proxy; never publish port 2375.
+  docker-socket-proxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      EVENTS: "1"
+      PING: "1"
+      VERSION: "1"
+      POST: "0"
+      ALLOW_RESTARTS: "0"
+      ALLOW_START: "0"
+      ALLOW_STOP: "0"
+      ALLOW_PAUSE: "0"
+      ALLOW_UNPAUSE: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    labels:
+      - "traefik.enable=false"
+
   traefik:
-    image: traefik:v2.9
+    secrets:
+      - cloudflare_dns_api_token
+    image: traefik:v3.7.16@sha256:22a759fb803abb5c3a7ba5d5a55a201c5fb0fc8993d5c72c47a89075e64f1953
     container_name: traefik
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      - docker-socket-proxy
+    networks:
+      - media
+      - rss
+      - books
+      - docker-api
+      - management
     command:
       - --providers.docker=true
+      - --providers.docker.endpoint=tcp://docker-socket-proxy:2375
       - --providers.docker.exposedbydefault=false
       - --api=true
       - --api.insecure=true
@@ -21,12 +59,11 @@ services:
       - --entrypoints.websecure.http.tls=true
       - --entrypoints.websecure.http.tls.certResolver=letsencrypt
       - --entrypoints.websecure.http.tls.domains[0].main=${BASE_DOMAIN_NAME}
-      - --entrypoints.websecure.http.tls.domains[0].sans=*${BASE_DOMAIN_NAME}
-      - --log.filePath=/config/traefik.log
-      - --log.level=DEBUG
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.${BASE_DOMAIN_NAME}
+      - --log.level=INFO
     environment:
       - CLOUDFLARE_EMAIL=${EMAIL}
-      - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
+      - CLOUDFLARE_DNS_API_TOKEN_FILE=/run/secrets/cloudflare_dns_api_token
     ports:
       - target: 80
         published: 80
@@ -38,7 +75,6 @@ services:
         published: 8080
         mode: host
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik:/config
     labels:
       - "traefik.enable=true"
@@ -46,21 +82,22 @@ services:
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.service=api@internal"
-      - "traefik.http.routers.traefik.middlewares=strip"
-      - "traefik.http.middlewares.strip.stripprefix.prefixes=/traefik"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.traefik.middlewares=middleware-ipwhitelist"
 
   sabnzbd:
+    networks:
+      - media
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.sabnzbd.rule=Host(`nzb.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.sabnzbd.entrypoints=websecure"
       - "traefik.http.routers.sabnzbd.tls.certresolver=letsencrypt"
       - "traefik.http.services.sabnzbd.loadbalancer.server.port=8080"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.sabnzbd.middlewares=middleware-ipwhitelist"
     environment:
       - PUID=${PUID}
@@ -73,16 +110,19 @@ services:
     restart: unless-stopped
 
   radarr:
+    networks:
+      - media
     depends_on:
       - sabnzbd
     image: linuxserver/radarr
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.radarr.rule=Host(`radarr.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.radarr.entrypoints=websecure"
       - "traefik.http.routers.radarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.radarr.middlewares=middleware-ipwhitelist"
     container_name: radarr
     environment:
@@ -97,16 +137,19 @@ services:
     restart: unless-stopped
 
   sonarr:
+    networks:
+      - media
     depends_on:
       - sabnzbd
     image: linuxserver/sonarr
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.sonarr.rule=Host(`sonarr.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.sonarr.entrypoints=websecure"
       - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.sonarr.middlewares=middleware-ipwhitelist"
     container_name: sonarr
     environment:
@@ -121,16 +164,19 @@ services:
       - /torrent:/data/torrents
     restart: unless-stopped
   lidarr:
+    networks:
+      - media
     depends_on:
       - sabnzbd
     image: linuxserver/lidarr
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.lidarr.rule=Host(`lidarr.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.lidarr.entrypoints=websecure"
       - "traefik.http.routers.lidarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.lidarr.loadbalancer.server.port=8686"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.lidarr.middlewares=middleware-ipwhitelist"
     container_name: lidarr
     environment:
@@ -145,14 +191,17 @@ services:
       - /torrent:/data/torrents
     restart: unless-stopped
   tautulli:
+    networks:
+      - media
     image: ghcr.io/tautulli/tautulli
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.tautulli.rule=Host(`tautulli.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.tautulli.entrypoints=websecure"
       - "traefik.http.routers.tautulli.tls.certresolver=letsencrypt"
       - "traefik.http.services.tautulli.loadbalancer.server.port=8181"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.tautulli.middlewares=middleware-ipwhitelist"
     container_name: tautulli
     restart: unless-stopped
@@ -165,9 +214,12 @@ services:
       - TZ=${TZ}
 
   seerr:
+    networks:
+      - media
     image: ghcr.io/seerr-team/seerr:latest
     init: true
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.overseerr.rule=Host(`request.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.overseerr.entrypoints=websecure"
@@ -182,24 +234,6 @@ services:
       - ./overseerr:/app/config
     restart: unless-stopped
 
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.homepage.rule=Host(`homepage.${BASE_DOMAIN_NAME}`)"
-      - "traefik.http.routers.homepage.entrypoints=websecure"
-      - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
-      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
-      - "traefik.http.routers.homepage.middlewares=middleware-ipwhitelist"
-    environment:
-      HOMEPAGE_ALLOWED_HOSTS: "*"
-    container_name: homepage
-    volumes:
-      - ./homepage:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    restart: unless-stopped
-
   cloudflare-ddns:
     image: oznu/cloudflare-ddns
     container_name: cloudflare-ddns
@@ -212,6 +246,8 @@ services:
       - RRTYPE=A
 
   prowlarr:
+    networks:
+      - media
     image: lscr.io/linuxserver/prowlarr
     container_name: prowlarr
     environment:
@@ -219,18 +255,21 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.prowlarr.entrypoints=websecure"
       - "traefik.http.routers.prowlarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.prowlarr.middlewares=middleware-ipwhitelist"
     volumes:
       - ./prowlarr:/config
     restart: unless-stopped
 
   autoscan-adapter:
+    networks:
+      - media
     depends_on:
       - plex
     image: dantebarba/autoscan-adapter
@@ -243,6 +282,8 @@ services:
       PLEX_TOKEN: ${PLEX_TOKEN}
 
   autoscan:
+    networks:
+      - media
     image: cloudb0x/autoscan
     container_name: autoscan
     restart: unless-stopped
@@ -257,6 +298,8 @@ services:
       - /movies:/movies
 
   plex:
+    networks:
+      - media
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
     ports:
@@ -283,6 +326,7 @@ services:
       - /prerolls:/prerolls
     restart: unless-stopped
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.plex.rule=Host(`plex.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.plex.entrypoints=websecure"
@@ -290,6 +334,8 @@ services:
       - "traefik.http.services.plex.loadbalancer.server.port=32400"
 
   notifiarr:
+    networks:
+      - media
     image: golift/notifiarr
     container_name: notifiarr
     restart: unless-stopped
@@ -301,11 +347,13 @@ services:
     volumes:
       - ./notifiarr:/config
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
       - "traefik.http.routers.notifiarr.rule=Host(`notifiarr.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.notifiarr.entrypoints=websecure"
       - "traefik.http.routers.notifiarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.notifiarr.loadbalancer.server.port=5454"
+      - "traefik.http.routers.notifiarr.middlewares=middleware-ipwhitelist"
 
   # jellyfin:
   #   image: lscr.io/linuxserver/jellyfin:latest
@@ -335,7 +383,7 @@ services:
   #     - "traefik.http.routers.jellyfin.entrypoints=websecure"
   #     - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt"
   #     - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
-  #     - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+  #     - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
   #
   # jellyplex-watched:
   #   image: luigi311/jellyplex-watched:latest
@@ -347,6 +395,8 @@ services:
   #   env_file: "./jellywatch/.env"
 
   kometa:
+    networks:
+      - media
     depends_on:
       - plex
     image: kometateam/kometa:latest
@@ -369,6 +419,10 @@ services:
       - /docker-configs/kometa:/config
 
   gluetun:
+    secrets:
+      - wireguard_private_key
+    networks:
+      - media
     image: qmcgaw/gluetun:latest
     container_name: gluetun
     restart: unless-stopped
@@ -387,7 +441,7 @@ services:
     environment:
       - VPN_SERVICE_PROVIDER=protonvpn
       - VPN_TYPE=wireguard
-      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_PRIVATE_KEY_SECRETFILE=/run/secrets/wireguard_private_key
       - SERVER_COUNTRIES=${SERVER_COUNTRIES}
       - TZ=${TZ}
       - QBT_WEBUI_ENABLED=true
@@ -432,13 +486,17 @@ services:
     depends_on:
       - gluetun
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
-      - "traefik.http.routers.qbittorrent.rule=host(`torrent.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.qbittorrent.rule=Host(`torrent.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.qbittorrent.entrypoints=websecure"
       - "traefik.http.routers.qbittorrent.tls.certresolver=letsencrypt"
       - "traefik.http.services.qbittorrent.loadbalancer.server.port=9977"
+      - "traefik.http.routers.qbittorrent.middlewares=middleware-ipwhitelist"
 
   plex-image-cleanup:
+    networks:
+      - media
     image: meisnate12/plex-image-cleanup
     container_name: plex-image-cleanup
     environment:
@@ -454,6 +512,8 @@ services:
     restart: unless-stopped
 
   posterizarr:
+    networks:
+      - media
     hostname: "posterizarr"
     container_name: "posterizarr"
     user: "${PUID}:${PGID}"
@@ -469,13 +529,17 @@ services:
       - "/docker-configs/kometa/assetsbackup:/assetsbackup"
       - "/docker-configs/kometa/manualassets:/manualassets"
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
       - "traefik.enable=true"
-      - "traefik.http.routers.posterizarr.rule=host(`poster.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.posterizarr.rule=Host(`poster.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.posterizarr.entrypoints=websecure"
       - "traefik.http.routers.posterizarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.posterizarr.loadbalancer.server.port=8000"
+      - "traefik.http.routers.posterizarr.middlewares=middleware-ipwhitelist"
 
   freshrss:
+    networks:
+      - rss
     hostname: "freshrss"
     container_name: "freshrss"
     environment:
@@ -498,13 +562,16 @@ services:
       - "./freshrss/data:/var/www/FreshRSS/data"
       - "./freshrss/extensions:/var/www/FreshRSS/extensions"
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_rss"
       - "traefik.enable=true"
-      - "traefik.http.routers.freshrss.rule=host(`rss.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.freshrss.rule=Host(`rss.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.freshrss.entrypoints=websecure"
       - "traefik.http.routers.freshrss.tls.certresolver=letsencrypt"
       - "traefik.http.services.freshrss.loadbalancer.server.port=80"
 
   kavita:
+    networks:
+      - books
     hostname: "kavita"
     container_name: "kavita"
     environment:
@@ -517,8 +584,9 @@ services:
       - "./kavita/config:/config"
       - "/books:/books"
     labels:
+      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_books"
       - "traefik.enable=true"
-      - "traefik.http.routers.books.rule=host(`books.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.books.rule=Host(`books.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.books.entrypoints=websecure"
       - "traefik.http.routers.books.tls.certresolver=letsencrypt"
       - "traefik.http.services.books.loadbalancer.server.port=5000"
@@ -526,13 +594,15 @@ services:
   portainer:
     image: portainer/portainer-ce:sts
     container_name: portainer
+    networks:
+      - management
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`portainer.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.portainer.entrypoints=websecure"
       - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipallowlist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.portainer.middlewares=middleware-ipwhitelist"
     environment:
       - PUID=${PUID}
@@ -542,3 +612,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./portainer:/data
     restart: unless-stopped
+
+networks:
+  default: {}
+  docker-api:
+    internal: true
+  management: {}
+  media: {}
+  rss: {}
+  books: {}
+
+secrets:
+  cloudflare_dns_api_token:
+    file: ./secrets/cloudflare_dns_api_token
+  wireguard_private_key:
+    file: ./secrets/wireguard_private_key
