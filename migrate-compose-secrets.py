@@ -17,8 +17,7 @@ SECRET_VARIABLES = (
     'QBT_PASSWORD', 'GSP_GTN_API_KEY',
 )
 # Only these consumers are wired to file-based secrets in this Compose file.
-WIRED_VARIABLES = {'CLOUDFLARE_DNS_API_TOKEN', 'CLOUDFLARE_DDNS_API_KEY',
-                   'WIREGUARD_PRIVATE_KEY'}
+WIRED_VARIABLES = {'CLOUDFLARE_DNS_API_TOKEN', 'CLOUDFLARE_DDNS_API_KEY'}
 
 
 def check_existing(path):

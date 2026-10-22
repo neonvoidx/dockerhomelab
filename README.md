@@ -6,7 +6,7 @@ Compose configuration for a media stack, FreshRSS, and Kavita.
 
 - Public through Traefik: Seerr (`request`), Plex (`plex`), FreshRSS (`rss`), Kavita (`books`). Each application must require its own authentication.
 - Other routed services use the LAN allowlist: `127.0.0.1/32,192.168.86.0/24`.
-- All media applications share the `media` network; qBittorrent and its forwarding helper share Gluetun's network namespace.
+- All remaining media applications share the `media` network. Gluetun, qBittorrent, and its forwarding helper have been removed; their data directories are preserved.
 - FreshRSS and Kavita have separate networks, each shared with Traefik.
 - Portainer has a separate management network. It retains full Docker management privileges.
 - Traefik uses a restricted socket proxy on a separate internal network. Container inspection remains available and can expose environment variables; Docker write requests are blocked.
@@ -22,10 +22,12 @@ Do not run this checkout against production until its paths and project name mat
 1. Preserve the existing Compose project name (set `COMPOSE_PROJECT_NAME` in `.env` when needed). Moving the Compose file can change the inferred name.
 2. Preserve the existing application directories. Relative bind mounts resolve beneath the Compose project directory; cloning into a new location does not migrate application state. Copy/migrate existing directories deliberately, or adjust the bind sources before deployment.
 3. Bring your existing `.env` to the deployment directory. Never commit it or generated secrets.
-4. Prepare the three wired secret files as described below.
+4. Prepare the two wired secret files as described below.
 5. Validate with `docker compose config --quiet`, deploy, and check application connectivity and certificate issuance. Recheck private hostnames from outside the LAN.
 
 Application and credential backups live on the Synology; protect access to that share.
+
+After pulling the removal, run `docker compose up -d --remove-orphans --wait` to remove the old VPN/torrent containers and start the remaining stack. This does not delete their bind-mounted configuration or download directories. Disable the old qBittorrent download client in Sonarr, Radarr, or Prowlarr if it is configured there.
 
 ## Migrating credentials to secret files
 
@@ -37,7 +39,7 @@ python3 migrate-compose-secrets.py
 
 Alternatively, pass `--env-file /absolute/path/to/.env`. Secret files are created beside that `.env`, so use the `.env` next to the deployed Compose file.
 
-In `.env`, single-quote literal credentials that contain `$`, for example `QBT_PASSWORD='example$f5'`. Unquoted or double-quoted values are interpolated by Compose and can be silently altered. The scripts abort if Compose reports an unset-variable warning; they do not rewrite `.env`. If a secret was previously copied with an incorrect value, restore it from the trusted original rather than bypassing the conflict guard.
+In `.env`, single-quote literal credentials that contain `$`, for example `BW_PASSWD='example$f5'`. Unquoted or double-quoted values are interpolated by Compose and can be silently altered. The scripts abort if Compose reports an unset-variable warning; they do not rewrite `.env`. If a secret was previously copied with an incorrect value, restore it from the trusted original rather than bypassing the conflict guard.
 
 The script copies present values for all 15 configured secret names into `secrets/`, using Docker Compose's dotenv parser. Each filename is the lowercase variable name. It prints no credential values, sets the directory to mode `0700` and files to `0600`, and refuses to overwrite different values. It leaves `.env` unchanged.
 
@@ -45,15 +47,14 @@ The script copies present values for all 15 configured secret names into `secret
 | --- | --- |
 | `CLOUDFLARE_DNS_API_TOKEN` | Wired to Traefik via `CLOUDFLARE_DNS_API_TOKEN_FILE` |
 | `CLOUDFLARE_DDNS_API_KEY` | Wired to Cloudflare DDNS via `API_KEY_FILE` |
-| `WIREGUARD_PRIVATE_KEY` | Wired to Gluetun via `WIREGUARD_PRIVATE_KEY_SECRETFILE` |
-| `PLEX_TOKEN`, `TRAKT_CLIENT_SECRET`, `MDB_API_KEY`, `TMDB_API_KEY`, `QBT_PASSWORD` | Copied when present; current Compose consumers still use `.env` |
-| `TAILSCALE_AUTH_KEY`, `KOMODO_DB_PASSWORD`, `BW_PASSWD`, `YUBICO_SECRET_KEY`, `OPENVPN_PASSWORD`, `GLUETUN_PASS`, `GSP_GTN_API_KEY` | Copied when present; no consumers are configured in this Compose file |
+| `PLEX_TOKEN`, `TRAKT_CLIENT_SECRET`, `MDB_API_KEY`, `TMDB_API_KEY` | Copied when present; current Compose consumers still use `.env` |
+| `WIREGUARD_PRIVATE_KEY`, `QBT_PASSWORD`, `TAILSCALE_AUTH_KEY`, `KOMODO_DB_PASSWORD`, `BW_PASSWD`, `YUBICO_SECRET_KEY`, `OPENVPN_PASSWORD`, `GLUETUN_PASS`, `GSP_GTN_API_KEY` | Copied when present; no consumers are configured in this Compose file |
 
-After a successful deployment with this Compose version, only `CLOUDFLARE_DNS_API_TOKEN`, `CLOUDFLARE_DDNS_API_KEY`, and `WIREGUARD_PRIVATE_KEY` may be removed from `.env`, provided no other stack or script still uses them. Keep every other entry until all of its consumers read the corresponding secret file. Creating the file alone does not migrate an application.
+After a successful deployment with this Compose version, only `CLOUDFLARE_DNS_API_TOKEN` and `CLOUDFLARE_DDNS_API_KEY` may be removed from `.env`, provided no other stack or script still uses them. Keep every other entry until all of its consumers read the corresponding secret file. Creating the file alone does not migrate an application.
 
-Missing optional values are skipped; no empty placeholder files are created. The three wired credentials must exist either in `.env` or in their existing nonempty secret files. Rerunning works after removing previously migrated entries from `.env`. Both single dollar signs and literal `$$` are preserved. The corrected names are `TAILSCALE_AUTH_KEY` and `OPENVPN_PASSWORD`; the misspelled variants are not migrated.
+Missing optional values are skipped; no empty placeholder files are created. The two wired credentials must exist either in `.env` or in their existing nonempty secret files. Rerunning works after removing previously migrated entries from `.env`. Both single dollar signs and literal `$$` are preserved. The corrected names are `TAILSCALE_AUTH_KEY` and `OPENVPN_PASSWORD`; the misspelled variants are not migrated.
 
-This Compose file cannot start Traefik, Cloudflare DDNS, and Gluetun until their secret files exist. Keep `.env` private (`chmod 600 .env`). Compose secrets are mounted files, not an encrypted secret store.
+This Compose file cannot start Traefik and Cloudflare DDNS until their secret files exist. Keep `.env` private (`chmod 600 .env`). Compose secrets are mounted files, not an encrypted secret store.
 
 ## Scheduled backup and update
 
@@ -77,7 +78,7 @@ The script:
 
 1. Locks out overlapping runs, validates Compose configuration and required secret files, verifies that `/docker` is an actual NFS mount, and performs a temporary write probe.
 2. Records immutable image IDs for the running services, then pulls configured images while the stack stays running. A pull failure aborts without stopping the stack.
-3. Rechecks the mount and stops the stack for backup with `down --remove-orphans`, including old containers for removed services such as Homepage.
+3. Rechecks the mount and stops the stack for backup with `down --remove-orphans`, including old containers for removed services such as Homepage, Gluetun, qBittorrent, and its forwarding helper.
 4. Mirrors `/docker-configs/` to `/docker/backups/docker-configs/`, retaining `--delete` and excluding Plex's cache.
 5. Mirrors the whole project directory (including `.git`, relative application state, `.env`, and secret files) to `/docker/backups/dockerhomelab/`, excluding the lock file, Plex's cache, and the entire backup root when it is nested inside the project.
 6. Saves the previous image mapping at `/docker/backups/dockerhomelab-previous-images.json` and starts the updated stack with `--remove-orphans --wait`.

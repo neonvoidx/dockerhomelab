@@ -420,82 +420,6 @@ services:
     volumes:
       - /docker-configs/kometa:/config
 
-  gluetun:
-    secrets:
-      - wireguard_private_key
-    networks:
-      - media
-    image: qmcgaw/gluetun:latest
-    container_name: gluetun
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
-    ports:
-      - 9977:9977
-      - 8888:8888/tcp
-      - 6881:6881
-      - 6881:6881/udp
-      - 51820:51820
-    environment:
-      - VPN_SERVICE_PROVIDER=protonvpn
-      - VPN_TYPE=wireguard
-      - WIREGUARD_PRIVATE_KEY_SECRETFILE=/run/secrets/wireguard_private_key
-      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
-      - TZ=${TZ}
-      - QBT_WEBUI_ENABLED=true
-      - PORT_FORWARD_ONLY=on
-      - VPN_PORT_FORWARDING=on
-      - UPDATER_PERIOD=24h
-    volumes:
-      - ./gluetun:/gluetun
-
-  qbt_port_forward:
-    image: mjmeli/qbittorrent-port-forward-gluetun-server
-    network_mode: "service:gluetun"
-    container_name: qbt_port_forward
-    environment:
-      QBT_USERNAME: ${QBT_USERNAME}
-      QBT_PASSWORD: ${QBT_PASSWORD}
-      QBT_ADDR: http://127.0.0.1:9977
-      GTN_ADDR: http://127.0.0.1:8000
-    restart: unless-stopped
-    depends_on:
-      - qbittorrent
-      - gluetun
-
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:libtorrentv1
-    container_name: qbittorrent
-    network_mode: "service:gluetun"
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - WEBUI_PORT=9977
-      - QBITTORRENT_WEBUI_PORT=9977
-    volumes:
-      - ./qbittorrent:/config
-      - /torrent:/downloads
-    ulimits:
-      nofile:
-        soft: 32768
-        hard: 65536
-    restart: unless-stopped
-    depends_on:
-      - gluetun
-    labels:
-      - "traefik.docker.network=${COMPOSE_PROJECT_NAME}_media"
-      - "traefik.enable=true"
-      - "traefik.http.routers.qbittorrent.rule=Host(`torrent.${BASE_DOMAIN_NAME}`)"
-      - "traefik.http.routers.qbittorrent.entrypoints=websecure"
-      - "traefik.http.routers.qbittorrent.tls.certresolver=letsencrypt"
-      - "traefik.http.services.qbittorrent.loadbalancer.server.port=9977"
-      - "traefik.http.routers.qbittorrent.middlewares=middleware-ipwhitelist"
-
   plex-image-cleanup:
     networks:
       - media
@@ -629,5 +553,3 @@ secrets:
     file: ./secrets/cloudflare_ddns_api_key
   cloudflare_dns_api_token:
     file: ./secrets/cloudflare_dns_api_token
-  wireguard_private_key:
-    file: ./secrets/wireguard_private_key
