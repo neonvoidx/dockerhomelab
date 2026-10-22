@@ -235,11 +235,13 @@ services:
     restart: unless-stopped
 
   cloudflare-ddns:
+    secrets:
+      - cloudflare_ddns_api_key
     image: oznu/cloudflare-ddns
     container_name: cloudflare-ddns
     restart: always
     environment:
-      - API_KEY=${CLOUDFLARE_DDNS_API_KEY}
+      - API_KEY_FILE=/run/secrets/cloudflare_ddns_api_key
       - ZONE=${BASE_DOMAIN_NAME}
       - SUBDOMAIN=${SUBDOMAIN}
       - PROXIED=true
@@ -623,6 +625,8 @@ networks:
   books: {}
 
 secrets:
+  cloudflare_ddns_api_key:
+    file: ./secrets/cloudflare_ddns_api_key
   cloudflare_dns_api_token:
     file: ./secrets/cloudflare_dns_api_token
   wireguard_private_key:
