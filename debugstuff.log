@@ -1,0 +1,146 @@
+            Name                           Command                   State                                                                                                                                                                                                                  Ports                                                                                                                                                                                                           
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+autoscan                        /init                            Up               3030/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+autoscan-adapter                python3 -m flask run --hos ...   Up                                                                                                                                                                                                                                                                                                                                                                                                                                         
+cloudflare-ddns                 /init                            Up                                                                                                                                                                                                                                                                                                                                                                                                                                         
+freshrss                        ./Docker/entrypoint.sh /bi ...   Up               80/tcp                                                                                                                                                                                                                                                                                                                                                                                                                    
+gluetun                         /gluetun-entrypoint              Up (unhealthy)   1080/tcp, 1080/udp, 0.0.0.0:51820->51820/tcp,:::51820->51820/tcp, 0.0.0.0:6881->6881/tcp,:::6881->6881/tcp, 0.0.0.0:6881->6881/udp,:::6881->6881/udp, 8000/tcp, 8388/tcp, 8388/udp, 0.0.0.0:8888->8888/tcp,:::8888->8888/tcp, 0.0.0.0:9977->9977/tcp,:::9977->9977/tcp                                                                                                                                                    
+homelab-docker-socket-proxy-1   docker-entrypoint.sh hapro ...   Up                                                                                                                                                                                                                                                                                                                                                                                                                                         
+kavita                          /init                            Up               5000/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+kometa                          /tini -s /.venv/bin/python ...   Up                                                                                                                                                                                                                                                                                                                                                                                                                                         
+lidarr                          /init                            Up               8686/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+notifiarr                       /notifiarr                       Up               5454/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+plex                            /init                            Up               0.0.0.0:1900->1900/udp,:::1900->1900/udp, 0.0.0.0:3005->3005/tcp,:::3005->3005/tcp, 0.0.0.0:32400->32400/tcp,:::32400->32400/tcp, 0.0.0.0:32410->32410/udp,:::32410->32410/udp, 0.0.0.0:32412->32412/udp,:::32412->32412/udp, 0.0.0.0:32413->32413/udp,:::32413->32413/udp, 0.0.0.0:32414->32414/udp,:::32414->32414/udp, 0.0.0.0:32469->32469/tcp,:::32469->32469/tcp, 5353/udp, 0.0.0.0:8324->8324/tcp,:::8324->8324/tcp
+plex-image-cleanup              /tini -s python3 plex_imag ...   Up                                                                                                                                                                                                                                                                                                                                                                                                                                         
+portainer                       /portainer                       Up               8000/tcp, 9000/tcp, 9443/tcp                                                                                                                                                                                                                                                                                                                                                                                              
+posterizarr                     /app/start.sh                    Up               8000/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+prowlarr                        /init                            Up               9696/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+qbittorrent                     /init                            Up                                                                                                                                                                                                                                                                                                                                                                                                                                         
+qbt_port_forward                /usr/src/app/entrypoint.sh       Restarting                                                                                                                                                                                                                                                                                                                                                                                                                                 
+radarr                          /init                            Up               7878/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+sabnzbd                         /init                            Up               8080/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+seerr                           docker-entrypoint.sh npm start   Up               5055/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+sonarr                          /init                            Up               8989/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+tautulli                        ./start.sh python Tautulli ...   Up (healthy)     8181/tcp                                                                                                                                                                                                                                                                                                                                                                                                                  
+traefik                         /entrypoint.sh --providers ...   Up               0.0.0.0:443->443/tcp,:::443->443/tcp, 0.0.0.0:80->80/tcp,:::80->80/tcp, 0.0.0.0:8080->8080/tcp,:::8080->8080/tcp                                                                                                                                                                                                                                                                                                          
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [wireguard] Connecting to 79.127.160.158:51820
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:33:44-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:33:50-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:33:56-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [wireguard] Connecting to 95.173.221.221:51820
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:33:56-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:34:02-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:34:07-04:00 INFO [http server] 200 GET /v1/portforward wrote 22B to 127.0.0.1:53112 in 49.263µs
+gluetun  | 2026-10-22T10:34:08-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [wireguard] Connecting to 163.5.171.2:51820
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:34:08-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:34:14-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:34:20-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [wireguard] Connecting to 95.173.217.2:51820
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:34:20-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:34:25-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:34:31-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+gluetun  | 2026-10-22T10:34:31-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:34:31-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:34:31-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:34:31-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:34:31-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:34:32-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:34:32-04:00 INFO [wireguard] Connecting to 185.156.46.33:51820
+gluetun  | 2026-10-22T10:34:32-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:34:32-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:34:37-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:34:43-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [wireguard] Connecting to 79.127.136.46:51820
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:34:43-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:34:49-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:34:55-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [wireguard] Connecting to 192.144.21.2:51820
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:34:55-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:34:59-04:00 INFO [http server] 200 GET /v1/portforward wrote 22B to 127.0.0.1:57438 in 79.791µs
+gluetun  | 2026-10-22T10:35:00-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:35:06-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout
+gluetun  | 2026-10-22T10:35:06-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:35:06-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:35:06-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:35:07-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:35:07-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:35:07-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:35:07-04:00 INFO [wireguard] Connecting to 62.93.176.131:51820
+gluetun  | 2026-10-22T10:35:07-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:35:07-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:35:12-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+gluetun  | 2026-10-22T10:35:18-04:00 WARN [vpn] restarting VPN because it failed to pass the healthcheck: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout
+gluetun  | 2026-10-22T10:35:18-04:00 INFO [vpn] 👉 See https://github.com/qdm12/gluetun-wiki/blob/main/faq/healthcheck.md
+gluetun  | 2026-10-22T10:35:18-04:00 INFO [vpn] DO NOT OPEN AN ISSUE UNLESS YOU HAVE READ AND TRIED EVERY POSSIBLE SOLUTION
+gluetun  | 2026-10-22T10:35:18-04:00 INFO [vpn] stopping
+gluetun  | 2026-10-22T10:35:18-04:00 INFO [vpn] starting
+gluetun  | 2026-10-22T10:35:18-04:00 INFO [firewall] allowing VPN connection...
+gluetun  | 2026-10-22T10:35:18-04:00 INFO [wireguard] Using available kernelspace implementation
+gluetun  | 2026-10-22T10:35:18-04:00 INFO [wireguard] Connecting to 146.70.147.114:51820
+gluetun  | 2026-10-22T10:35:19-04:00 INFO [vpn] wireguard setup is complete. Note wireguard is a silent protocol and it may or may not work, without giving any error message. Typically i/o timeout errors indicate the wireguard connection is not working.
+gluetun  | 2026-10-22T10:35:19-04:00 INFO [MTU discovery] finding maximum MTU, this can take up to 6 seconds
+gluetun  | 2026-10-22T10:35:24-04:00 INFO [MTU discovery] reverting VPN interface tun0 MTU to 1320 (due to: PMTUD failed with both ICMP and TCP)
+2026-10-22T10:35:36-04:00 ERROR HTTP response status is not OK: 500 500 Internal Server Error: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+
+2026-10-22T10:35:36-04:00 INFO Shutdown successful
+
+2026-10-22T10:35:41-04:00 ERROR HTTP response status is not OK: 500 500 Internal Server Error: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+
+2026-10-22T10:35:41-04:00 INFO Shutdown successful
+
+2026-10-22T10:35:46-04:00 ERROR HTTP response status is not OK: 500 500 Internal Server Error: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+
+2026-10-22T10:35:46-04:00 INFO Shutdown successful
+
+2026-10-22T10:35:51-04:00 ERROR HTTP response status is not OK: 500 500 Internal Server Error: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+
+2026-10-22T10:35:51-04:00 INFO Shutdown successful
+
+2026-10-22T10:35:56-04:00 ERROR HTTP response status is not OK: 500 500 Internal Server Error: startup check: all check tries failed: parallel attempt 1/2 failed: dialing: dial tcp4: lookup github.com: i/o timeout, parallel attempt 2/2 failed: dialing: dial tcp4: lookup cloudflare.com: i/o timeout
+
+2026-10-22T10:35:56-04:00 INFO Shutdown successful
+
+
