@@ -1,7 +1,6 @@
 version: "3"
 services:
   traefik:
-    # The official v2 Traefik docker image
     image: traefik:v2.9
     container_name: traefik
     restart: unless-stopped
@@ -11,7 +10,6 @@ services:
       - --api=true
       - --api.insecure=true
       - --api.dashboard=true
-      # Let's Encrypt
       - --certificatesresolvers.letsencrypt.acme.dnschallenge=true
       - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
       - --certificatesresolvers.letsencrypt.acme.email=${EMAIL}
@@ -40,7 +38,6 @@ services:
         published: 8080
         mode: host
     volumes:
-      # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik:/config
     labels:
@@ -51,8 +48,9 @@ services:
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.middlewares=strip"
       - "traefik.http.middlewares.strip.stripprefix.prefixes=/traefik"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.traefik.middlewares=middleware-ipwhitelist"
+
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
@@ -62,17 +60,18 @@ services:
       - "traefik.http.routers.sabnzbd.entrypoints=websecure"
       - "traefik.http.routers.sabnzbd.tls.certresolver=letsencrypt"
       - "traefik.http.services.sabnzbd.loadbalancer.server.port=8080"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.sabnzbd.middlewares=middleware-ipwhitelist"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - /docker-configs/sabnzbd:/config
-      - /nzb:/downloads #optional
-      - /nzb/incomplete:/incomplete-downloads #optional
+      - ./sabnzbd:/config
+      - /nzb:/downloads
+      - /nzb/incomplete:/incomplete-downloads
     restart: unless-stopped
+
   radarr:
     depends_on:
       - sabnzbd
@@ -83,7 +82,7 @@ services:
       - "traefik.http.routers.radarr.entrypoints=websecure"
       - "traefik.http.routers.radarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.radarr.middlewares=middleware-ipwhitelist"
     container_name: radarr
     environment:
@@ -92,9 +91,11 @@ services:
       - TZ=${TZ}
     volumes:
       - /docker-configs/radarr:/config
-      - /movies:/movies #optional
-      - /nzb:/downloads #optional
+      - /movies:/movies
+      - /nzb:/downloads
+      - /torrent:/data/torrents
     restart: unless-stopped
+
   sonarr:
     depends_on:
       - sabnzbd
@@ -105,38 +106,44 @@ services:
       - "traefik.http.routers.sonarr.entrypoints=websecure"
       - "traefik.http.routers.sonarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.sonarr.middlewares=middleware-ipwhitelist"
     container_name: sonarr
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+      - SONARR__AUTH_METHOD="External"
     volumes:
       - /docker-configs/sonarr:/config
-      - /tv:/tv #optional
-      - /nzb:/downloads #optional
+      - /tv:/tv
+      - /nzb:/downloads
+      - /torrent:/data/torrents
     restart: unless-stopped
-  bazarr:
-    image: lscr.io/linuxserver/bazarr:latest
-    container_name: bazarr
+  lidarr:
+    depends_on:
+      - sabnzbd
+    image: linuxserver/lidarr
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lidarr.rule=Host(`lidarr.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.lidarr.entrypoints=websecure"
+      - "traefik.http.routers.lidarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lidarr.loadbalancer.server.port=8686"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.routers.lidarr.middlewares=middleware-ipwhitelist"
+    container_name: lidarr
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+      - LIDARR__AUTH_METHOD="External"
     volumes:
-      - /docker-configs/bazarr:/config
-      - /tv:/tv #optional
-      - /movies:/movies
-    restart: unless-stopped    
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.bazarr.rule=Host(`bazarr.${BASE_DOMAIN_NAME}`)"
-      - "traefik.http.routers.bazarr.entrypoints=websecure"
-      - "traefik.http.routers.bazarr.tls.certresolver=letsencrypt"
-      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
-      - "traefik.http.routers.bazarr.middlewares=middleware-ipwhitelist"
+      - /docker-configs/lidarr:/config
+      - /music:/music
+      - /nzb:/downloads
+      - /torrent:/data/torrents
+    restart: unless-stopped
   tautulli:
     image: ghcr.io/tautulli/tautulli
     labels:
@@ -145,33 +152,36 @@ services:
       - "traefik.http.routers.tautulli.entrypoints=websecure"
       - "traefik.http.routers.tautulli.tls.certresolver=letsencrypt"
       - "traefik.http.services.tautulli.loadbalancer.server.port=8181"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.tautulli.middlewares=middleware-ipwhitelist"
     container_name: tautulli
     restart: unless-stopped
     volumes:
-      - /docker-configs/tautulli:/config
-      - /docker-configs/posterizarr:/posterizarr:rw
+      - ./tautulli:/config
+      - ./posterizarr:/posterizarr:rw
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-  overseerr:
-    image: lscr.io/linuxserver/overseerr:latest
+
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    init: true
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.overseerr.rule=Host(`request.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.overseerr.entrypoints=websecure"
       - "traefik.http.routers.overseerr.tls.certresolver=letsencrypt"
       - "traefik.http.services.overseerr.loadbalancer.server.port=5055"
-    container_name: overseerr
+    container_name: seerr
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      - /docker-configs/overseerr:/config
+      - ./overseerr:/app/config
     restart: unless-stopped
+
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     labels:
@@ -180,13 +190,16 @@ services:
       - "traefik.http.routers.homepage.entrypoints=websecure"
       - "traefik.http.routers.homepage.tls.certresolver=letsencrypt"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.homepage.middlewares=middleware-ipwhitelist"
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: "*"
     container_name: homepage
     volumes:
-      - ./homepage:/app/config # Make sure your local config directory exists
-      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+      - ./homepage:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
+
   cloudflare-ddns:
     image: oznu/cloudflare-ddns
     container_name: cloudflare-ddns
@@ -197,6 +210,7 @@ services:
       - SUBDOMAIN=${SUBDOMAIN}
       - PROXIED=true
       - RRTYPE=A
+
   prowlarr:
     image: lscr.io/linuxserver/prowlarr
     container_name: prowlarr
@@ -210,27 +224,12 @@ services:
       - "traefik.http.routers.prowlarr.entrypoints=websecure"
       - "traefik.http.routers.prowlarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
       - "traefik.http.routers.prowlarr.middlewares=middleware-ipwhitelist"
     volumes:
-      - /docker-configs/prowlarr:/config
+      - ./prowlarr:/config
     restart: unless-stopped
-  portainer:
-    container_name: portainer
-    image: portainer/portainer-ee:latest
-    volumes:
-      - ./portainer:/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.${BASE_DOMAIN_NAME}`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24,172.70.231.0/24,172.70.230.0/24"
-      - "traefik.http.middlewares.reportdirect.redirectscheme.port=6012"
-      - "traefik.http.routers.portainer.middlewares=middleware-ipwhitelist"
+
   autoscan-adapter:
     depends_on:
       - plex
@@ -242,6 +241,7 @@ services:
       PUID: ${PUID}
       PLEX_URL: http://plex:32400
       PLEX_TOKEN: ${PLEX_TOKEN}
+
   autoscan:
     image: cloudb0x/autoscan
     container_name: autoscan
@@ -255,10 +255,11 @@ services:
       - ./plex-autoscan:/config
       - /tv:/tv
       - /movies:/movies
+
   plex:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
-    ports: # Explcitily open these ports because bridged mode instead of host although traefik shouldnt care
+    ports:
       - "32400:32400/tcp"
       - "3005:3005/tcp"
       - "8324:8324/tcp"
@@ -274,7 +275,7 @@ services:
       - TZ=${TZ}
       - VERSION=latest
     devices:
-      - /dev/dri:/dev/dri # Pass in Intel QuickSync iGPU for hardware transcoding
+      - /dev/dri:/dev/dri
     volumes:
       - /docker-configs/plex:/config
       - /tv:/tv
@@ -287,6 +288,7 @@ services:
       - "traefik.http.routers.plex.entrypoints=websecure"
       - "traefik.http.routers.plex.tls.certresolver=letsencrypt"
       - "traefik.http.services.plex.loadbalancer.server.port=32400"
+
   notifiarr:
     image: golift/notifiarr
     container_name: notifiarr
@@ -297,13 +299,53 @@ services:
       - PGID=${PGID}
       - PUID=${PUID}
     volumes:
-      - /docker-configs/notifiarr:/config
+      - ./notifiarr:/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.notifiarr.rule=Host(`notifiarr.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.notifiarr.entrypoints=websecure"
       - "traefik.http.routers.notifiarr.tls.certresolver=letsencrypt"
       - "traefik.http.services.notifiarr.loadbalancer.server.port=5454"
+
+  # jellyfin:
+  #   image: lscr.io/linuxserver/jellyfin:latest
+  #   container_name: jellyfin
+  #   environment:
+  #     - PUID=${PUID}
+  #     - PGID=${PGID}
+  #     - TZ=${TZ}
+  #     - JELLYFIN_PublishedServerUrl=jellyfin.${BASE_DOMAIN_NAME}
+  #   devices:
+  #     - /dev/dri:/dev/dri
+  #   volumes:
+  #     - /docker-configs/jellyfin/config:/config
+  #     - /docker-configs/jellyfin/cache:/cache
+  #     - type: bind
+  #       source: /tv
+  #       target: /tv
+  #       read_only: true
+  #     - type: bind
+  #       source: /movies
+  #       target: /movies
+  #       read_only: true
+  #   restart: unless-stopped
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.${BASE_DOMAIN_NAME}`)"
+  #     - "traefik.http.routers.jellyfin.entrypoints=websecure"
+  #     - "traefik.http.routers.jellyfin.tls.certresolver=letsencrypt"
+  #     - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+  #     - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+  #
+  # jellyplex-watched:
+  #   image: luigi311/jellyplex-watched:latest
+  #   container_name: jellyplex-watched
+  #   restart: unless-stopped
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #   env_file: "./jellywatch/.env"
+
   kometa:
     depends_on:
       - plex
@@ -315,8 +357,9 @@ services:
       - PGID=${PGID}
       - PUID=${PUID}
       - KOMETA_CONFIG=/config/config.yml
-      - KOMETA_TIMES=08:00,17:00
+      - KOMETA_TIMES=07:00,17:00
       - KOMETA_plextoken=${PLEX_TOKEN}
+      - KOMETA_plexurl=${PLEX_URL}
       - KOMETA_traktclientid=${TRAKT_CLIENT_ID}
       - KOMETA_traktclientsecret=${TRAKT_CLIENT_SECRET}
       - KOMETA_tmdbapikey=${TMDB_API_KEY}
@@ -324,26 +367,77 @@ services:
       - KOMETA_RUN=false
     volumes:
       - /docker-configs/kometa:/config
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+    ports:
+      - 9977:9977
+      - 8888:8888/tcp
+      - 6881:6881
+      - 6881:6881/udp
+      - 51820:51820
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+      - TZ=${TZ}
+      - QBT_WEBUI_ENABLED=true
+      - PORT_FORWARD_ONLY=on
+      - VPN_PORT_FORWARDING=on
+      - UPDATER_PERIOD=24h
+    volumes:
+      - ./gluetun:/gluetun
+
+  qbt_port_forward:
+    image: mjmeli/qbittorrent-port-forward-gluetun-server
+    network_mode: "service:gluetun"
+    container_name: qbt_port_forward
+    environment:
+      QBT_USERNAME: ${QBT_USERNAME}
+      QBT_PASSWORD: ${QBT_PASSWORD}
+      QBT_ADDR: http://127.0.0.1:9977
+      GTN_ADDR: http://127.0.0.1:8000
+    restart: unless-stopped
+    depends_on:
+      - qbittorrent
+      - gluetun
+
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:libtorrentv1
     container_name: qbittorrent
-    ports: # Explcitily open these ports because bridged mode instead of host although traefik shouldnt care
-      - "6881:6881/udp"
+    network_mode: "service:gluetun"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - WEBUI_PORT=8080
+      - WEBUI_PORT=9977
+      - QBITTORRENT_WEBUI_PORT=9977
     volumes:
-      - /docker-configs/qbittorent:/config
+      - ./qbittorrent:/config
       - /torrent:/downloads
+    ulimits:
+      nofile:
+        soft: 32768
+        hard: 65536
     restart: unless-stopped
+    depends_on:
+      - gluetun
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.qbittorrent.rule=Host(`torrent.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.qbittorrent.rule=host(`torrent.${BASE_DOMAIN_NAME}`)"
       - "traefik.http.routers.qbittorrent.entrypoints=websecure"
       - "traefik.http.routers.qbittorrent.tls.certresolver=letsencrypt"
-      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=9977"
+
   plex-image-cleanup:
     image: meisnate12/plex-image-cleanup
     container_name: plex-image-cleanup
@@ -355,33 +449,96 @@ services:
       - PLEX_URL=${PLEX_URL}
       - SCHEDULE=${SCHEDULE}
     volumes:
-      - /docker-configs/plex-image-cleaup:/config
+      - ./plex-image-cleanup:/config
       - /docker-configs/plex:/plex
     restart: unless-stopped
-      #  tailscale:
-      #image: ghcr.io/tailscale/tailscale:latest
-      #container_name: tailscale
-      # environment:
-      #- PUID=${PUID}
-      #- PGID=${PGID}
-      #- TZ=${TZ}
-      #- TS_AUTH_ONCE=True
-      #- TS_AUTH_KEY=${TAILSCALE_AUTH_KEY}
-      #- TS_STATE_DIR=/var/lib/tailscale
-      #- TS_ROUTES=192.168.86.0/24
-      #volumes:
-      #- /docker-configs/tailscale:/var/lib/tailscale
+
   posterizarr:
     hostname: "posterizarr"
     container_name: "posterizarr"
+    user: "${PUID}:${PGID}"
+    environment:
+      - TZ=${TZ}
+      - "RUN_TIME=05:00,18:00"
+      - DISABLE_UI=false
+    image: "ghcr.io/fscorrupt/posterizarr:latest"
+    restart: "unless-stopped"
+    volumes:
+      - "./posterizarr:/config"
+      - "/docker-configs/kometa/assets:/assets"
+      - "/docker-configs/kometa/assetsbackup:/assetsbackup"
+      - "/docker-configs/kometa/manualassets:/manualassets"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.posterizarr.rule=host(`poster.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.posterizarr.entrypoints=websecure"
+      - "traefik.http.routers.posterizarr.tls.certresolver=letsencrypt"
+      - "traefik.http.services.posterizarr.loadbalancer.server.port=8000"
+
+  freshrss:
+    hostname: "freshrss"
+    container_name: "freshrss"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - RUN_TIME=05:00,15:00
-    image: "ghcr.io/fscorrupt/docker-posterizarr-dev:latest"
+      - CRON_MIN=*/1
+      - TRUSTED_PROXY="192.168.86.0/24"
+      - SERVER_DNS=rss.${BASE_DOMAIN_NAME}
+      - LISTEN=0.0.0.0:80
+    image: "freshrss/freshrss:latest"
+    build:
+      context: https://github.com/FreshRSS/FreshRSS.git#edge
+      dockerfile: Docker/Dockerfile-Alpine
+    restart: "unless-stopped"
+    logging:
+      options:
+        max-size: 512m
+    volumes:
+      - "./freshrss/data:/var/www/FreshRSS/data"
+      - "./freshrss/extensions:/var/www/FreshRSS/extensions"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.freshrss.rule=host(`rss.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.freshrss.entrypoints=websecure"
+      - "traefik.http.routers.freshrss.tls.certresolver=letsencrypt"
+      - "traefik.http.services.freshrss.loadbalancer.server.port=80"
+
+  kavita:
+    hostname: "kavita"
+    container_name: "kavita"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    image: "lscr.io/linuxserver/kavita:latest"
     restart: "unless-stopped"
     volumes:
-      - "/docker-configs/posterizarr:/config"
-      - "/docker-configs/kometa/assets:/assets"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./kavita/config:/config"
+      - "/books:/books"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.books.rule=host(`books.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.books.entrypoints=websecure"
+      - "traefik.http.routers.books.tls.certresolver=letsencrypt"
+      - "traefik.http.services.books.loadbalancer.server.port=5000"
+
+  portainer:
+    image: portainer/portainer-ce:sts
+    container_name: portainer
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.${BASE_DOMAIN_NAME}`)"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=letsencrypt"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.middlewares.middleware-ipwhitelist.ipwhitelist.sourcerange=127.0.0.1/32,192.168.86.0/24"
+      - "traefik.http.routers.portainer.middlewares=middleware-ipwhitelist"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer:/data
+    restart: unless-stopped
