@@ -37,6 +37,8 @@ python3 migrate-compose-secrets.py
 
 Alternatively, pass `--env-file /absolute/path/to/.env`. Secret files are created beside that `.env`, so use the `.env` next to the deployed Compose file.
 
+In `.env`, single-quote literal credentials that contain `$`, for example `QBT_PASSWORD='example$f5'`. Unquoted or double-quoted values are interpolated by Compose and can be silently altered. The scripts abort if Compose reports an unset-variable warning; they do not rewrite `.env`. If a secret was previously copied with an incorrect value, restore it from the trusted original rather than bypassing the conflict guard.
+
 The script copies present values for all 15 configured secret names into `secrets/`, using Docker Compose's dotenv parser. Each filename is the lowercase variable name. It prints no credential values, sets the directory to mode `0700` and files to `0600`, and refuses to overwrite different values. It leaves `.env` unchanged.
 
 | Variables | Consumer migration status |

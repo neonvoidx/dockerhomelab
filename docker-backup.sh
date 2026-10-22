@@ -56,7 +56,6 @@ flock -n 9 || die 'Another backup/update is already running.'
 cd -- "$STACK_DIR"
 compose=(docker compose --project-directory "$STACK_DIR" -f "$STACK_DIR/docker-compose.yaml")
 "${compose[@]}" version >/dev/null
-"${compose[@]}" config --quiet
 # Fail before shutdown if the new secret-file migration has not been completed.
 python3 - "${compose[@]}" <<'PYSECRETS'
 import json, os, subprocess, sys
@@ -64,6 +63,8 @@ result = subprocess.run(sys.argv[1:] + ['config', '--format', 'json'],
                         capture_output=True, text=True)
 if result.returncode:
     raise SystemExit('Could not validate Compose secret files.')
+if 'variable is not set' in result.stderr.lower():
+    raise SystemExit('Compose reported unresolved variables. Single-quote literal .env values containing dollar signs before retrying. No containers were stopped.')
 for secret in json.loads(result.stdout).get('secrets', {}).values():
     path = secret.get('file')
     if path and (not os.path.isfile(path) or not os.access(path, os.R_OK)):

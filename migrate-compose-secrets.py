@@ -60,6 +60,9 @@ def main():
                                 env=env, capture_output=True, text=True)
         if result.returncode:
             raise SystemExit('Could not resolve credentials from .env. No files written.')
+        if 'variable is not set' in result.stderr.lower():
+            raise SystemExit("Compose reported unresolved variables. Single-quote literal .env values "
+                             "containing dollar signs. No secret files were written.")
         values = json.loads(result.stdout)['services']['extract']['environment']
         # Compose escapes each dollar sign so rendered config can be reused as input.
         # Decode that serialization once; never interpolate the credential again.
