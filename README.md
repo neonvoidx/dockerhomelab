@@ -77,7 +77,7 @@ The script:
 
 1. Locks out overlapping runs, validates Compose configuration and required secret files, verifies that `/docker` is an actual NFS mount, and performs a temporary write probe.
 2. Records immutable image IDs for the running services, then pulls configured images while the stack stays running. A pull failure aborts without stopping the stack.
-3. Rechecks the mount and stops the stack for backup.
+3. Rechecks the mount and stops the stack for backup with `down --remove-orphans`, including old containers for removed services such as Homepage.
 4. Mirrors `/docker-configs/` to `/docker/backups/docker-configs/`, retaining `--delete` and excluding Plex's cache.
 5. Mirrors the whole project directory (including `.git`, relative application state, `.env`, and secret files) to `/docker/backups/dockerhomelab/`, excluding the lock file, Plex's cache, and the entire backup root when it is nested inside the project.
 6. Saves the previous image mapping at `/docker/backups/dockerhomelab-previous-images.json` and starts the updated stack with `--remove-orphans --wait`.

@@ -132,7 +132,7 @@ log 'Pulling images while the stack remains running.'
 verify_synology
 if (( ${#previous_services[@]} )); then needs_restart=1; fi
 log 'Stopping the stack for a consistent configuration backup.'
-"${compose[@]}" down --timeout "$STOP_TIMEOUT"
+"${compose[@]}" down --remove-orphans --timeout "$STOP_TIMEOUT"
 verify_synology
 mkdir -p -- "$CONFIG_DEST" "$PROJECT_DEST"
 log 'Mirroring /docker-configs data to Synology.'
