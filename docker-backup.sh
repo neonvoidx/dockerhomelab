@@ -25,12 +25,31 @@ BACKUP_ROOT=$(realpath -m -- "$BACKUP_ROOT")
 [[ -d $CONFIG_SOURCE ]] || die 'Configuration source missing.'
 [[ -n $(find "$CONFIG_SOURCE" -mindepth 1 -maxdepth 1 -print -quit) ]] || die 'Configuration source is empty; refusing a destructive mirror.'
 [[ $BACKUP_ROOT == "$SYNOLOGY_MOUNT/"* ]] || die 'Backup root must be beneath the Synology mount.'
-for source_dir in "$CONFIG_SOURCE" "$STACK_DIR"; do
-  [[ $BACKUP_ROOT != "$source_dir" && $BACKUP_ROOT != "$source_dir/"* ]] || die 'Backup destination must not be inside a backup source.'
+[[ $BACKUP_ROOT != "$CONFIG_SOURCE" && $BACKUP_ROOT != "$CONFIG_SOURCE/"* ]] || die 'Backup destination must not be inside the configuration source.'
+CONFIG_DEST=$(realpath -m -- "$BACKUP_ROOT/docker-configs")
+PROJECT_DEST=$(realpath -m -- "$BACKUP_ROOT/dockerhomelab")
+for destination in "$CONFIG_DEST" "$PROJECT_DEST"; do
+  [[ $destination == "$BACKUP_ROOT/"* ]] || die 'Backup destination resolves outside the backup root.'
+  for source_dir in "$CONFIG_SOURCE" "$STACK_DIR"; do
+    [[ $source_dir != "$destination" && $source_dir != "$destination/"* ]] || die 'A backup destination must not equal or contain a source.'
+  done
 done
-CONFIG_DEST=$BACKUP_ROOT/docker-configs
-PROJECT_DEST=$BACKUP_ROOT/dockerhomelab
-[[ $CONFIG_SOURCE != "$CONFIG_DEST" && $STACK_DIR != "$PROJECT_DEST" ]] || die 'Source and destination must differ.'
+[[ $BACKUP_ROOT != "$STACK_DIR" ]] || die 'The backup root must not equal the stack directory.'
+project_excludes=(--exclude='.backup-update.lock' --exclude='plex/Library/Application Support/Plex Media Server/Cache/*')
+if [[ $BACKUP_ROOT == "$STACK_DIR/"* ]]; then
+  # /docker may be both the project root and the NFS mount. Exclude the whole
+  # nested backup tree, including both mirrors, to prevent recursive copying.
+  relative_backup=${BACKUP_ROOT#"$STACK_DIR/"}
+  exclude_pattern=$(python3 - "$relative_backup" <<'PYEXCLUDE'
+import sys
+path = sys.argv[1]
+if '\n' in path or '\r' in path:
+    raise SystemExit('Backup paths must not contain newlines.')
+print('/' + ''.join('\\' + c if c in '\\[]?*' else c for c in path) + '/')
+PYEXCLUDE
+  )
+  project_excludes+=("--exclude=$exclude_pattern")
+fi
 
 exec 9>"$STACK_DIR/.backup-update.lock"
 flock -n 9 || die 'Another backup/update is already running.'
@@ -118,7 +137,7 @@ mkdir -p -- "$CONFIG_DEST" "$PROJECT_DEST"
 log 'Mirroring /docker-configs data to Synology.'
 rsync -aPhiv --delete --exclude='plex/Library/Application Support/Plex Media Server/Cache/*' -- "$CONFIG_SOURCE/" "$CONFIG_DEST/"
 log 'Mirroring project-relative configurations, .env, and secret files to Synology.'
-rsync -aPhiv --delete --exclude='.git/' --exclude='.backup-update.lock' --exclude='plex/Library/Application Support/Plex Media Server/Cache/*' -- "$STACK_DIR/" "$PROJECT_DEST/"
+rsync -aPhiv --delete "${project_excludes[@]}" -- "$STACK_DIR/" "$PROJECT_DEST/"
 cp -- "$state/previous-images.json" "$BACKUP_ROOT/dockerhomelab-previous-images.json"
 
 log 'Backup completed; starting the stack with the pulled images.'
