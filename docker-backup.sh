@@ -13,7 +13,7 @@ STOP_TIMEOUT=${STOP_TIMEOUT:-120}
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 die() { log "ERROR: $*" >&2; exit 1; }
-for cmd in docker rsync findmnt flock realpath timeout mktemp python3; do
+for cmd in git docker rsync findmnt flock realpath timeout mktemp python3; do
   command -v "$cmd" >/dev/null || die "Required command missing: $cmd"
 done
 STACK_DIR=$(realpath -e -- "$STACK_DIR")
@@ -103,7 +103,30 @@ verify_synology() {
   probe=$(timeout 15 mktemp "$SYNOLOGY_MOUNT/.dockerhomelab-backup-probe.XXXXXX") || die 'Synology write probe failed or timed out.'
   timeout 15 rm -- "$probe" || die 'Synology write-probe cleanup failed.'
 }
+sync_repository() {
+  local repo_root branch upstream changes ahead
+  repo_root=$(git rev-parse --show-toplevel) || die 'The stack directory must be a Git repository.'
+  [[ $repo_root == "$STACK_DIR" ]] || die 'STACK_DIR must be the repository root.'
+  branch=$(git symbolic-ref --quiet --short HEAD) || die 'Cannot sync a detached Git HEAD.'
+  upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}') || die 'Configure a Git upstream before running scheduled backups.'
+  changes=$(git status --porcelain --untracked-files=normal)
+  if [[ -n $changes ]]; then
+    log "Committing non-ignored repository changes on $branch."
+    git add --all
+    if ! git diff --cached --quiet; then
+      git commit -m 'Update homelab configuration during backup'
+    fi
+  fi
+  ahead=$(git rev-list --count "${upstream}..HEAD")
+  if (( ahead > 0 )); then
+    log "Pushing repository commits to $upstream before shutdown."
+    git push
+  else
+    log 'Git repository has no unpushed changes.'
+  fi
+}
 verify_synology
+sync_repository
 
 # Save only service names and immutable image IDs, never inspected credentials.
 "${compose[@]}" ps --quiet > "$state/container-ids"

@@ -4,3 +4,6 @@
 !/migrate-compose-secrets.py
 !/docker-backup.sh
 !/README.md
+!/crontab.txt
+!/install-crontab.sh
+!/.env.template

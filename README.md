@@ -1,6 +1,6 @@
 # Docker homelab
 
-Compose configuration for a media stack, FreshRSS, and Kavita.
+Compose configuration for a media stack, FreshRSS, and Kavita. The maintained branch is `master`.
 
 ## Access and networks
 
@@ -27,6 +27,15 @@ Do not run this checkout against production until its paths and project name mat
 5. Validate with `docker compose config --quiet`, deploy, and check application connectivity and certificate issuance. Recheck private hostnames from outside the LAN.
 
 Application and credential backups live on the Synology; protect access to that share.
+
+For a new deployment, start with the tracked template:
+
+```sh
+cp .env.template .env
+chmod 600 .env
+```
+
+Edit `.env` with your own domain, IDs, timezone, Plex/API credentials, and Cloudflare tokens before running `python3 migrate-compose-secrets.py`. The template defines every variable referenced by Compose and lists optional external-stack secrets separately. Blank credential fields must be filled where that integration is enabled. The stack still requires the application-specific configuration directories described above.
 
 After pulling the removal, run `docker compose up -d --remove-orphans --wait` to remove the old VPN/torrent containers and start the remaining stack. This does not delete their bind-mounted configuration or download directories. Disable the old qBittorrent download client in Sonarr, Radarr, or Prowlarr if it is configured there.
 
@@ -61,7 +70,7 @@ This Compose file cannot start Traefik and Cloudflare DDNS until their secret fi
 
 Scripts now live at the repository root. Update any existing cron entry that still refers to `scripts/backup-update.sh` to use `docker-backup.sh`.
 
-Run `docker-backup.sh` on the Linux Docker host. Requirements: Bash, Docker Compose v2, Python 3, rsync, and standard Linux utilities including `findmnt`, `flock`, `timeout`, and `realpath`. The account must be able to control Docker, read all application data, and write to the NFS share while preserving permissions.
+Run `docker-backup.sh` on the Linux Docker host. Requirements: Bash, Docker Compose v2, Python 3, Git, rsync, and standard Linux utilities including `findmnt`, `flock`, `timeout`, and `realpath`. The account must be able to control Docker, read all application data, and write to the NFS share while preserving permissions.
 
 Defaults:
 
@@ -78,7 +87,7 @@ Defaults:
 The script:
 
 1. Locks out overlapping runs, validates Compose configuration and required secret files, verifies that `/docker` is an actual NFS mount, and performs a temporary write probe.
-2. Records immutable image IDs for the running services, then pulls configured images while the stack stays running. A pull failure aborts without stopping the stack.
+2. Stages all non-ignored Git changes, commits them, and pushes any unpushed commits to the current branch's configured upstream. A clean repository produces no commit. Git failures abort before container shutdown. It then records immutable image IDs for running services and pulls configured images while the stack stays running; a pull failure also aborts without downtime.
 3. Rechecks the mount and stops the stack for backup with `down --remove-orphans`, including old containers for removed services such as Homepage, Gluetun, qBittorrent, and its forwarding helper.
 4. Mirrors `/docker-configs/` to `/docker/backups/docker-configs/`, retaining `--delete` and excluding Plex's cache.
 5. Mirrors the whole project directory (including `.git`, relative application state, `.env`, and secret files) to `/docker/backups/dockerhomelab/`, excluding the lock file, Plex's cache, and the entire backup root when it is nested inside the project.
@@ -97,6 +106,16 @@ Example cron entry (replace the checkout path and choose a writable log path):
 ```cron
 0 5 * * * /absolute/path/to/dockerhomelab/docker-backup.sh >> /absolute/path/to/dockerhomelab-update.log 2>&1
 ```
+
+The saved `crontab.txt` is tracked. To install it only if the current user has no crontab:
+
+```sh
+./install-crontab.sh
+```
+
+Run it as the intended cron user (for a root-owned deployment, run `sudo ./install-crontab.sh`). It does not merge entries or overwrite an existing crontab, including an empty one. Read/access failures abort without installing anything. The saved job expects the stack at `/docker` and writes `/var/log/docker-update-backup.log`; adjust `crontab.txt` before installing if your paths differ. Cron uses the host timezone, independently of the containers' `TZ`.
+
+For scheduled Git sync, configure the cron user's Git `user.name`, `user.email`, SSH access, and branch upstream. Verify that `git push` works non-interactively as that user. Sync never pulls or merges remote changes automatically; resolve a rejected push manually. The ignore allowlist keeps `.env`, secrets, application state, and logs out of normal `git add --all` operations. Do not force-add sensitive files. The Git commit/push happens before shutdown, so the backup also contains its updated Git metadata.
 
 Use an absolute path to Docker or set an appropriate cron `PATH` if it is not found. To enforce the exact Synology share, set `EXPECTED_SYNOLOGY_SOURCE` to the output of `findmnt -rn --mountpoint /docker -o SOURCE` in the job environment.
 
