@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 
-STACK_DIR=${STACK_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}
+STACK_DIR=${STACK_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}
 CONFIG_SOURCE=${CONFIG_SOURCE:-/docker-configs}
 SYNOLOGY_MOUNT=${SYNOLOGY_MOUNT:-/docker}
 BACKUP_ROOT=${BACKUP_ROOT:-$SYNOLOGY_MOUNT/backups}

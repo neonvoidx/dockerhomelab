@@ -37,7 +37,7 @@ def check_existing(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--env-file', type=Path,
-                        default=Path(__file__).resolve().parent.parent / '.env')
+                        default=Path(__file__).resolve().parent / '.env')
     args = parser.parse_args()
     env_file = args.env_file.expanduser().resolve()
     if not env_file.is_file():

@@ -32,7 +32,7 @@ Application and credential backups live on the Synology; protect access to that 
 From the deployment directory:
 
 ```sh
-python3 scripts/migrate-compose-secrets.py
+python3 migrate-compose-secrets.py
 ```
 
 Alternatively, pass `--env-file /absolute/path/to/.env`. Secret files are created beside that `.env`, so use the `.env` next to the deployed Compose file.
@@ -55,13 +55,15 @@ This Compose file cannot start Traefik, Cloudflare DDNS, and Gluetun until their
 
 ## Scheduled backup and update
 
-Run `scripts/backup-update.sh` on the Linux Docker host. Requirements: Bash, Docker Compose v2, Python 3, rsync, and standard Linux utilities including `findmnt`, `flock`, `timeout`, and `realpath`. The account must be able to control Docker, read all application data, and write to the NFS share while preserving permissions.
+Scripts now live at the repository root. Update any existing cron entry that still refers to `scripts/backup-update.sh` to use `docker-backup.sh`.
+
+Run `docker-backup.sh` on the Linux Docker host. Requirements: Bash, Docker Compose v2, Python 3, rsync, and standard Linux utilities including `findmnt`, `flock`, `timeout`, and `realpath`. The account must be able to control Docker, read all application data, and write to the NFS share while preserving permissions.
 
 Defaults:
 
 | Setting | Default |
 | --- | --- |
-| `STACK_DIR` | Parent directory of `scripts/` |
+| `STACK_DIR` | Directory containing `docker-backup.sh` |
 | `CONFIG_SOURCE` | `/docker-configs` |
 | `SYNOLOGY_MOUNT` | `/docker` |
 | `BACKUP_ROOT` | `/docker/backups` |
@@ -87,7 +89,7 @@ The script never automatically builds FreshRSS from its optional `edge` build co
 Example cron entry (replace the checkout path and choose a writable log path):
 
 ```cron
-0 5 * * * /absolute/path/to/dockerhomelab/scripts/backup-update.sh >> /absolute/path/to/dockerhomelab-update.log 2>&1
+0 5 * * * /absolute/path/to/dockerhomelab/docker-backup.sh >> /absolute/path/to/dockerhomelab-update.log 2>&1
 ```
 
 Use an absolute path to Docker or set an appropriate cron `PATH` if it is not found. To enforce the exact Synology share, set `EXPECTED_SYNOLOGY_SOURCE` to the output of `findmnt -rn --mountpoint /docker -o SOURCE` in the job environment.
@@ -95,9 +97,8 @@ Use an absolute path to Docker or set an appropriate cron `PATH` if it is not fo
 ## Local checks
 
 ```sh
-bash -n scripts/backup-update.sh
-python3 -m unittest discover -s tests -v
+bash -n docker-backup.sh
 docker compose config --no-interpolate --quiet
 ```
 
-Backup tests use fake Docker/NFS/rsync commands and temporary directories; they do not stop containers or modify real backups. Secret migration tests use synthetic credentials and the installed Compose parser, without requiring a running Docker daemon.
+The local `tests/` directory is intentionally ignored and is not included in new clones. Where that local suite exists, run `python3 -m unittest discover -s tests -v`. Backup tests use fake Docker/NFS/rsync commands and temporary directories; secret migration tests use synthetic credentials and the installed Compose parser without requiring a Docker daemon.
